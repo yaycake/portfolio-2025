@@ -180,3 +180,41 @@
   color: #666;
   font-size: 1rem;
 }
+
+.content-container {
+  display: flex;
+  width: 100%;
+  max-width: 1200px;
+  gap: 2rem;
+  margin: 0 auto;
+}
+
+.map-container {
+  flex: 1;
+  height: 600px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.upload-section {
+  width: 400px;
+}
+
+.popup-content {
+  padding: 8px;
+}
+
+.popup-content img {
+  width: 100%;
+  max-width: 200px;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.popup-content p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+}
