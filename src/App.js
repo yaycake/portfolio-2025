@@ -89,14 +89,38 @@ function App() {
   const extractLocationFromImage = (file) => {
     return new Promise((resolve) => {
       EXIF.getData(file, function() {
+        const dateTimeOriginal = EXIF.getTag(this, 'DateTimeOriginal'); // Get the original date
+        console.log('Raw dateTimeOriginal:', dateTimeOriginal); // Log raw EXIF date
+
+        let date;
+        if (dateTimeOriginal) {
+          // Format the dateTimeOriginal to a valid format
+          const formattedDateTime = dateTimeOriginal
+            .replace(/(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3') // Replace colons in date part
+            .replace(' ', 'T'); // Replace space with 'T' for ISO format
+
+          console.log('Formatted dateTime for Date constructor:', formattedDateTime);
+          date = new Date(formattedDateTime);
+         
+          
+          if (isNaN(date.getTime())) {
+            console.error('Invalid date created from:', dateTimeOriginal);
+          } else {
+            console.log('Valid date:', date);
+          }
+        } else {
+          date = new Date(file.lastModified);
+          console.log('Using lastModified date:', date);
+        }
+
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true };
+        const formattedDate = date.toLocaleDateString('en-US', options);
+        console.log('Formatted Date:', formattedDate); // Log the formatted date
+
         const lat = EXIF.getTag(this, 'GPSLatitude');
         const long = EXIF.getTag(this, 'GPSLongitude');
         const latRef = EXIF.getTag(this, 'GPSLatitudeRef');
         const longRef = EXIF.getTag(this, 'GPSLongitudeRef');
-        const dateTimeOriginal = EXIF.getTag(this, 'DateTimeOriginal'); // Get the original date
-
-        // Log all EXIF data
-        console.log('EXIF Data for', file.name, EXIF.getAllTags(this));
         
         if (lat && long) {
           // Convert coordinates to decimal
@@ -106,22 +130,6 @@ function App() {
           // Apply ref (N/S, E/W)
           const latitude = latRef === 'N' ? latDecimal : -latDecimal;
           const longitude = longRef === 'E' ? longDecimal : -longDecimal;
-
-          // Use the original date if available, otherwise fall back to lastModified
-          let date;
-          if (dateTimeOriginal) {
-            // Format the dateTimeOriginal to a valid format
-            const formattedDateTime = dateTimeOriginal.replace(/:/g, '-').replace(' ', 'T');
-            date = new Date(formattedDateTime);
-          } else {
-            date = new Date(file.lastModified);
-          }
-          
-          const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true };
-          const formattedDate = date.toLocaleDateString('en-US', options);
-
-          // Log the formatted date
-          console.log('Formatted Date:', formattedDate); // Log the formatted date
 
           console.log('Converted coordinates:', { latitude, longitude, formattedDate });
           resolve({ latitude, longitude, formattedDate });
