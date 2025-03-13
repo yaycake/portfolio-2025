@@ -94,6 +94,11 @@ function App() {
         const latRef = EXIF.getTag(this, 'GPSLatitudeRef');
         const longRef = EXIF.getTag(this, 'GPSLongitudeRef');
         
+        console.log('EXIF Data:', {
+          lat, long, latRef, longRef,
+          allTags: EXIF.getAllTags(this)
+        });
+        
         if (lat && long) {
           // Convert coordinates to decimal
           const latDecimal = lat[0] + lat[1]/60 + lat[2]/3600;
@@ -103,8 +108,10 @@ function App() {
           const latitude = latRef === 'N' ? latDecimal : -latDecimal;
           const longitude = longRef === 'E' ? longDecimal : -longDecimal;
           
+          console.log('Converted coordinates:', { latitude, longitude });
           resolve({ latitude, longitude });
         } else {
+          console.log('No location data found in image');
           resolve(null);
         }
       });
@@ -147,8 +154,42 @@ function App() {
     return file.preview;
   };
 
+  const createCustomMarker = (file) => {
+    // Create marker element
+    const el = document.createElement('div');
+    el.className = 'custom-marker';
+    
+    // Create thumbnail image
+    const img = document.createElement('img');
+    img.src = file.preview;
+    img.alt = file.name;
+    el.appendChild(img);
+
+    // Create and add marker to map
+    const marker = new mapboxgl.Marker({
+      element: el,
+      anchor: 'center'
+    })
+      .setLngLat([file.location.longitude, file.location.latitude])
+      .setPopup(
+        new mapboxgl.Popup({
+          offset: 25,
+          className: 'photo-popup'
+        }).setHTML(`
+          <div class="popup-content">
+            <img src="${file.preview}" alt="${file.name}" />
+            <p>${file.name}</p>
+          </div>
+        `)
+      )
+      .addTo(map);
+
+    return marker;
+  };
+
   const onDrop = useCallback(async (acceptedFiles) => {
     setLoading(true);
+    console.log('Files dropped:', acceptedFiles);
 
     const processFiles = acceptedFiles.map(async (file) => {
       const location = await extractLocationFromImage(file);
@@ -163,41 +204,48 @@ function App() {
     });
 
     const newFiles = await Promise.all(processFiles);
+    console.log('All files processed:', newFiles);
     setFiles(prevFiles => [...prevFiles, ...newFiles]);
+
+    // Collect coordinates for fitting bounds
+    const bounds = new mapboxgl.LngLatBounds();
 
     // Add markers for new files
     newFiles.forEach(file => {
       if (file.location) {
-        const marker = new mapboxgl.Marker()
-          .setLngLat([file.location.longitude, file.location.latitude])
-          .setPopup(
-            new mapboxgl.Popup().setHTML(`
-              <div class="popup-content">
-                <img src="${file.preview}" alt="${file.name}" />
-                <p>${file.name}</p>
-              </div>
-            `)
-          )
-          .addTo(map);
-
+        console.log('Creating marker for:', file.name, file.location);
+        const marker = createCustomMarker(file);
         setMarkers(prev => [...prev, marker]);
+
+        // Extend bounds to include this marker's location
+        bounds.extend([file.location.longitude, file.location.latitude]);
+      } else {
+        console.log('No location data for:', file.name);
       }
     });
+
+    // Fit the map to the bounds of the markers
+    if (map) {
+      map.fitBounds(bounds, {
+        padding: { top: 20, bottom: 20, left: 20, right: 20 },
+        maxZoom: 15 // Optional: set a maximum zoom level
+      });
+    }
 
     setLoading(false);
   }, [map]);
 
   // Clean up
-  useEffect(() => {
-    return () => {
-      files.forEach(file => {
-        if (file.preview) {
-          URL.revokeObjectURL(file.preview);
-        }
-      });
-      markers.forEach(marker => marker.remove());
-    };
-  }, [files, markers]);
+  // useEffect(() => {
+  //   return () => {
+  //     files.forEach(file => {
+  //       if (file.preview) {
+  //         URL.revokeObjectURL(file.preview);
+  //       }
+  //     });
+  //     markers.forEach(marker => marker.remove());
+  //   };
+  // }, [markers]);
 
   const handleDelete = useCallback((idToDelete) => {
     setFiles(prevFiles => {

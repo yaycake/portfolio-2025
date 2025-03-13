@@ -218,3 +218,51 @@
   font-size: 0.9rem;
   color: #666;
 }
+
+.custom-marker {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  cursor: pointer;
+  overflow: hidden;
+  background-color: white;
+  transition: transform 0.2s ease;
+}
+
+.custom-marker:hover {
+  transform: scale(1.1);
+}
+
+.custom-marker img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-popup {
+  max-width: 300px;
+}
+
+.photo-popup .mapboxgl-popup-content {
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.popup-content {
+  padding: 12px;
+}
+
+.popup-content img {
+  width: 100%;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.popup-content p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+}
