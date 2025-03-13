@@ -93,11 +93,10 @@ function App() {
         const long = EXIF.getTag(this, 'GPSLongitude');
         const latRef = EXIF.getTag(this, 'GPSLatitudeRef');
         const longRef = EXIF.getTag(this, 'GPSLongitudeRef');
-        
-        console.log('EXIF Data:', {
-          lat, long, latRef, longRef,
-          allTags: EXIF.getAllTags(this)
-        });
+        const dateTimeOriginal = EXIF.getTag(this, 'DateTimeOriginal'); // Get the original date
+
+        // Log all EXIF data
+        console.log('EXIF Data for', file.name, EXIF.getAllTags(this));
         
         if (lat && long) {
           // Convert coordinates to decimal
@@ -107,9 +106,25 @@ function App() {
           // Apply ref (N/S, E/W)
           const latitude = latRef === 'N' ? latDecimal : -latDecimal;
           const longitude = longRef === 'E' ? longDecimal : -longDecimal;
+
+          // Use the original date if available, otherwise fall back to lastModified
+          let date;
+          if (dateTimeOriginal) {
+            // Format the dateTimeOriginal to a valid format
+            const formattedDateTime = dateTimeOriginal.replace(/:/g, '-').replace(' ', 'T');
+            date = new Date(formattedDateTime);
+          } else {
+            date = new Date(file.lastModified);
+          }
           
-          console.log('Converted coordinates:', { latitude, longitude });
-          resolve({ latitude, longitude });
+          const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true };
+          const formattedDate = date.toLocaleDateString('en-US', options);
+
+          // Log the formatted date
+          console.log('Formatted Date:', formattedDate); // Log the formatted date
+
+          console.log('Converted coordinates:', { latitude, longitude, formattedDate });
+          resolve({ latitude, longitude, formattedDate });
         } else {
           console.log('No location data found in image');
           resolve(null);
@@ -178,7 +193,8 @@ function App() {
         }).setHTML(`
           <div class="popup-content">
             <img src="${file.preview}" alt="${file.name}" />
-            <p>${file.name}</p>
+            <p>${file.formattedDate} - ${file.name}</p>
+            <span class="file-format">${file.fileExtension}</span>
           </div>
         `)
       )
@@ -192,14 +208,16 @@ function App() {
     console.log('Files dropped:', acceptedFiles);
 
     const processFiles = acceptedFiles.map(async (file) => {
-      const location = await extractLocationFromImage(file);
+      const locationData = await extractLocationFromImage(file);
       const preview = URL.createObjectURL(file);
 
       return {
         preview,
         name: file.name,
         id: `${file.name}-${Date.now()}`,
-        location
+        location: locationData ? { latitude: locationData.latitude, longitude: locationData.longitude } : null,
+        formattedDate: locationData ? locationData.formattedDate : 'Unknown Date',
+        fileExtension: file.name.split('.').pop()
       };
     });
 

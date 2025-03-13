@@ -266,3 +266,13 @@
   font-size: 0.9rem;
   color: #666;
 }
+
+.file-format {
+  display: inline-block;
+  padding: 4px 8px;
+  background-color: #007bff; /* Change to your desired color */
+  color: white;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  margin-top: 5px;
+}
