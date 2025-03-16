@@ -23,9 +23,10 @@
 }
 
 .title {
-  font-size: 2.5rem;
+  font-size: 32px;
   font-weight: 600;
   color: #1a1a1a;
+  height: 32px;
 }
 
 .dropzone {
@@ -113,22 +114,39 @@
 
 .thumbnails-container {
   width: 100%;
-  max-width: 600px;
-  margin-top: 2rem;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 1rem;
+ 
+  display: flex;
+  justify-content: start; 
+  align-items: start;
+  gap: 8px;
   padding: 1rem;
 }
 
 .thumbnail {
   position: relative;
-  aspect-ratio: 1;
-  border-radius: 8px;
+  width: 100px;
+  height: 100px;
   overflow: hidden;
-  background-color: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+.upload-thumbnail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f0f0f0;
+  cursor: pointer;
+}
+
+.upload-box {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
 }
 
 .thumbnail:hover {
@@ -211,7 +229,7 @@
 
 .upload-section {
   width: 100%;
-  height: 124px;
+  /* height: 124px; */
   display: flex;
  
   flex-direction: column;
@@ -321,4 +339,30 @@
   align-items: center; /* Center content vertically */
   justify-content: center; /* Center content horizontally */
   background-color: #fff; /* Optional: Background color */
+}
+
+.action-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem;
+  background-color: #f9f9f9; /* Background color for the action bar */
+  border-top: 1px solid #ccc; /* Optional: border for separation */
+}
+
+.clear-all-button,
+.create-journey-button {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  color: white;
+  background-color: #007bff; /* Change to your desired color */
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.clear-all-button:hover,
+.create-journey-button:hover {
+  background-color: #0056b3; /* Darker shade for hover effect */
 }
