@@ -1,16 +1,15 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import MainRouter from './MainRouter'; // Import the MainRouter
 import './index.css';
-import App from './App';
 import reportWebVitals from './reportWebVitals';
 
 // Create a root for React 18
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <BrowserRouter>
-    <App />
-  </BrowserRouter>
+  <React.StrictMode>
+    <MainRouter /> {/* Use MainRouter for routing */}
+  </React.StrictMode>
 );
 
 // If you want to start measuring performance in your app, pass a function

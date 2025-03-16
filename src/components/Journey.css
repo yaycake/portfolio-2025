@@ -1,0 +1,19 @@
+.journey-container {
+  padding: 2rem;
+  text-align: center;
+}
+
+.journey-header {
+  font-size: 32px; /* Same size as the main title */
+  margin-bottom: 1rem;
+}
+
+.journey-title {
+  font-size: 24px; /* Title size */
+  margin-bottom: 0.5rem;
+}
+
+.journey-summary {
+  font-size: 18px; /* Summary size */
+  color: #666; /* Optional: color for the summary text */
+} 

@@ -5,7 +5,10 @@ import EXIF from 'exif-js';
 import './App.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import logo from './assets/mappi.svg'; 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'; // Keep this for navigation
+import './App.css';
+import Journey from './components/Journey'; // Import the Journey component
+import Home from './components/Home'; // Import the Home component
 
 // Replace with your new token
 mapboxgl.accessToken = 'pk.eyJ1IjoieWF5LWNha2UiLCJhIjoiY204NXFoOGg0MTZmbTJqczdpbXVxcXAyNCJ9.TiXWfrlv3z2vZ4iVswDkPQ'; // Your new token here
