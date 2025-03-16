@@ -4,6 +4,7 @@ import mapboxgl from 'mapbox-gl';
 import EXIF from 'exif-js';
 import './App.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import logo from './assets/mappi.svg'; 
 
 // Replace with your new token
 mapboxgl.accessToken = 'pk.eyJ1IjoieWF5LWNha2UiLCJhIjoiY204NXFoOGg0MTZmbTJqczdpbXVxcXAyNCJ9.TiXWfrlv3z2vZ4iVswDkPQ'; // Your new token here
@@ -72,14 +73,25 @@ function App() {
     };
   }, [db]);
 
-  // Initialize map
+  // Initialize map and set user's location
   useEffect(() => {
     const mapInstance = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/mapbox/light-v10',
-      center: [-122.4194, 37.7749], // Default to San Francisco
       zoom: 12
     });
+
+    // Fetch user's location based on IP address
+    fetch('https://ipapi.co/json/')
+      .then(response => response.json())
+      .then(data => {
+        const { latitude, longitude } = data;
+        mapInstance.setCenter([longitude, latitude]);
+        mapInstance.setZoom(12); // Adjust zoom level as needed
+      })
+      .catch(error => {
+        console.error('Error fetching user location:', error);
+      });
 
     setMap(mapInstance);
 
@@ -292,64 +304,78 @@ function App() {
 
   return (
     <div className="App">
-      <h1 className="title">PhotoMaps</h1>
+      <div id="top-nav">
+        <img class="nav-logo" src={logo} alt=""></img>
+        <h1 className="title">Mappi</h1>
+      </div>
       <div className="content-container">
         <div id="map" className="map-container"></div>
-        <div className="upload-section">
-          <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''}`}>
-            <input {...getInputProps()} />
-            <div className="dropzone-content">
-              <p>{isDragActive ? 'Drop files here!' : 'Drag & drop files here'}</p>
-              <button className="upload-button">upload files</button>
-            </div>
+      </div>
+      <div className="upload-section">
+        <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''}`}>
+          <input {...getInputProps()} />
+          <div className="dropzone-content">
+            <p>{isDragActive ? 'Drop files here!' : 'Drag & drop files here'}</p>
+            <button className="upload-button">upload files</button>
           </div>
-
-          {loading && <div className="loading">Loading images...</div>}
-
-          {files.length > 0 && (
-            <div className="thumbnails-container">
-              {files.map(file => (
-                <div key={file.id} className="thumbnail">
-                  <img
-                    src={file.preview}
-                    alt={file.name}
-                    onError={(e) => {
-                      console.error('Image load error:', file.name);
-                    }}
-                    onLoad={() => console.log('Image loaded successfully:', file.name)}
-                  />
-                  <button 
-                    className="delete-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(file.id);
-                    }}
-                    aria-label="Delete image"
-                  >
-                    <svg 
-                      width="14" 
-                      height="14" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2"
-                      strokeLinecap="round" 
-                      strokeLinejoin="round"
-                    >
-                      <path d="M3 6h18"></path>
-                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                    </svg>
-                  </button>
-                  <span className="filename">{file.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
+
+        {loading && <div className="loading">Loading images...</div>}
+
+        {files.length > 0 && (
+          <div className="thumbnails-container">
+            {files.map(file => (
+              <div key={file.id} className="thumbnail">
+                <img
+                  src={file.preview}
+                  alt={file.name}
+                  onError={(e) => {
+                    console.error('Image load error:', file.name);
+                  }}
+                  onLoad={() => console.log('Image loaded successfully:', file.name)}
+                />
+                <button 
+                  className="delete-button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(file.id);
+                  }}
+                  aria-label="Delete image"
+                >
+                  <svg 
+                    width="14" 
+                    height="14" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2"
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                  >
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                  </svg>
+                </button>
+                <span className="filename">{file.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+function ImageTile({ date, time, fileName, fileFormat }) {
+    return (
+        <div className="image-tile">
+            <div className="date">{date}</div>
+            <div className="time">{time}</div>
+            <div className="file-name">{fileName.replace(/\.[^/.]+$/, "")}</div>
+            <div className="file-format-pill">{fileFormat}</div>
+        </div>
+    );
 }
 
 export default App;
