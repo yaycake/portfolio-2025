@@ -366,3 +366,15 @@
 .create-journey-button:hover {
   background-color: #0056b3; /* Darker shade for hover effect */
 }
+
+.clear-all-button:disabled {
+  background-color: #ccc; /* Light gray background */
+  color: #666; /* Darker gray text */
+  cursor: not-allowed; /* Change cursor to indicate it's not clickable */
+}
+
+.create-journey-button:disabled {
+  background-color: #ccc; /* Light gray background */
+  color: #666; /* Darker gray text */
+  cursor: not-allowed; /* Change cursor to indicate it's not clickable */
+}

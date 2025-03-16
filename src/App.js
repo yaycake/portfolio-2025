@@ -430,8 +430,20 @@ function App() {
       </div>
       {/* Action Bar */}
       <div className="action-bar">
-        <button className="clear-all-button" onClick={handleClearAll}>Clear All</button>
-        <button className="create-journey-button" onClick={() => navigate('/new-journey')}>Create Journey</button>
+        <button 
+          className="clear-all-button" 
+          onClick={handleClearAll} 
+          disabled={files.length === 0} // Disable if no files are uploaded
+        >
+          Clear All
+        </button>
+        <button 
+          className="create-journey-button" 
+          onClick={() => navigate('/new-journey')}
+          disabled={files.length === 0} // Disable if no files are uploaded
+        >
+          Create Journey
+        </button>
       </div>
     </div>
   );
