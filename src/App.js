@@ -4,6 +4,8 @@ import mapboxgl from 'mapbox-gl';
 import EXIF from 'exif-js';
 import './App.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import logo from './assets/mappi.svg'; 
+import { useNavigate } from 'react-router-dom';
 
 // Replace with your new token
 mapboxgl.accessToken = 'pk.eyJ1IjoieWF5LWNha2UiLCJhIjoiY204NXFoOGg0MTZmbTJqczdpbXVxcXAyNCJ9.TiXWfrlv3z2vZ4iVswDkPQ'; // Your new token here
@@ -47,6 +49,7 @@ function App() {
   const [db, setDb] = useState(null);
   const [map, setMap] = useState(null);
   const [markers, setMarkers] = useState([]);
+  const navigate = useNavigate();
 
   // Initialize IndexedDB
   useEffect(() => {
@@ -72,32 +75,76 @@ function App() {
     };
   }, [db]);
 
-  // Initialize map
-  useEffect(() => {
+  // Function to initialize the map
+  const initializeMap = (initialCoordinates, initialZoom) => {
     const mapInstance = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/mapbox/light-v10',
-      center: [-122.4194, 37.7749], // Default to San Francisco
-      zoom: 12
+      center: initialCoordinates,
+      zoom: initialZoom
     });
 
-    setMap(mapInstance);
+    // Fetch user's location based on IP address
+    fetch('https://ipapi.co/json/')
+      .then(response => response.json())
+      .then(data => {
+        const { latitude, longitude } = data;
+        mapInstance.setCenter([longitude, latitude]);
+        mapInstance.setZoom(12); // Adjust zoom level as needed
+      })
+      .catch(error => {
+        console.error('Error fetching user location:', error);
+      });
 
-    return () => mapInstance.remove();
+    setMap(mapInstance); // Update the state with the new map instance
+
+    return mapInstance; // Return the map instance if needed
+  };
+
+  // Initialize map and set user's location
+  useEffect(() => {
+    const initialCoordinates = [0, 0]; // Set to your desired initial coordinates
+    const initialZoom = 2; // Set to your desired initial zoom level
+    const mapInstance = initializeMap(initialCoordinates, initialZoom);
+
+    return () => mapInstance.remove(); // Cleanup on unmount
   }, []);
 
   const extractLocationFromImage = (file) => {
     return new Promise((resolve) => {
       EXIF.getData(file, function() {
+        const dateTimeOriginal = EXIF.getTag(this, 'DateTimeOriginal'); // Get the original date
+        console.log('Raw dateTimeOriginal:', dateTimeOriginal); // Log raw EXIF date
+
+        let date;
+        if (dateTimeOriginal) {
+          // Format the dateTimeOriginal to a valid format
+          const formattedDateTime = dateTimeOriginal
+            .replace(/(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3') // Replace colons in date part
+            .replace(' ', 'T'); // Replace space with 'T' for ISO format
+
+          console.log('Formatted dateTime for Date constructor:', formattedDateTime);
+          date = new Date(formattedDateTime);
+         
+          
+          if (isNaN(date.getTime())) {
+            console.error('Invalid date created from:', dateTimeOriginal);
+          } else {
+            console.log('Valid date:', date);
+          }
+        } else {
+          date = new Date(file.lastModified);
+          console.log('Using lastModified date:', date);
+        }
+
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true };
+        const formattedDate = date.toLocaleDateString('en-US', options);
+        console.log('Formatted Date:', formattedDate); // Log the formatted date
+
         const lat = EXIF.getTag(this, 'GPSLatitude');
         const long = EXIF.getTag(this, 'GPSLongitude');
         const latRef = EXIF.getTag(this, 'GPSLatitudeRef');
         const longRef = EXIF.getTag(this, 'GPSLongitudeRef');
-        
-        console.log('EXIF Data:', {
-          lat, long, latRef, longRef,
-          allTags: EXIF.getAllTags(this)
-        });
         
         if (lat && long) {
           // Convert coordinates to decimal
@@ -107,9 +154,9 @@ function App() {
           // Apply ref (N/S, E/W)
           const latitude = latRef === 'N' ? latDecimal : -latDecimal;
           const longitude = longRef === 'E' ? longDecimal : -longDecimal;
-          
-          console.log('Converted coordinates:', { latitude, longitude });
-          resolve({ latitude, longitude });
+
+          console.log('Converted coordinates:', { latitude, longitude, formattedDate });
+          resolve({ latitude, longitude, formattedDate });
         } else {
           console.log('No location data found in image');
           resolve(null);
@@ -178,7 +225,8 @@ function App() {
         }).setHTML(`
           <div class="popup-content">
             <img src="${file.preview}" alt="${file.name}" />
-            <p>${file.name}</p>
+            <p>${file.formattedDate} - ${file.name}</p>
+            <span class="file-format">${file.fileExtension}</span>
           </div>
         `)
       )
@@ -192,14 +240,16 @@ function App() {
     console.log('Files dropped:', acceptedFiles);
 
     const processFiles = acceptedFiles.map(async (file) => {
-      const location = await extractLocationFromImage(file);
+      const locationData = await extractLocationFromImage(file);
       const preview = URL.createObjectURL(file);
 
       return {
         preview,
         name: file.name,
         id: `${file.name}-${Date.now()}`,
-        location
+        location: locationData ? { latitude: locationData.latitude, longitude: locationData.longitude } : null,
+        formattedDate: locationData ? locationData.formattedDate : 'Unknown Date',
+        fileExtension: file.name.split('.').pop()
       };
     });
 
@@ -250,12 +300,23 @@ function App() {
   const handleDelete = useCallback((idToDelete) => {
     setFiles(prevFiles => {
       const fileToDelete = prevFiles.find(file => file.id === idToDelete);
-      if (fileToDelete && fileToDelete.preview) {
-        URL.revokeObjectURL(fileToDelete.preview);
+      if (fileToDelete) {
+        // Remove the marker from the map
+        const markerToRemove = markers.find(marker => marker.id === idToDelete);
+        if (markerToRemove) {
+          console.log(`Removing marker for file ID: ${idToDelete}`); // Debug log
+          markerToRemove.marker.remove(); // Remove the marker from the map
+          setMarkers(prevMarkers => prevMarkers.filter(marker => marker.id !== idToDelete)); // Update markers state
+        } else {
+          console.warn(`No marker found for file ID: ${idToDelete}`); // Debug log
+        }
+        if (fileToDelete.preview) {
+          URL.revokeObjectURL(fileToDelete.preview);
+        }
       }
       return prevFiles.filter(file => file.id !== idToDelete);
     });
-  }, []);
+  }, [markers]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -264,66 +325,139 @@ function App() {
     }
   });
 
+  // Clear all files and markers
+  const handleClearAll = () => {
+    const confirmClear = window.confirm("Are you sure you want to clear all photos?");
+    if (confirmClear) {
+      // Debug log to check current markers
+      console.log('Current markers before clearing:', markers);
+
+      // Remove all markers from the map
+      markers.forEach(marker => {
+        if (marker && marker.marker) { // Check if marker and marker.marker are defined
+          console.log(`Removing marker for ID: ${marker.id}`); // Debug log
+          marker.marker.remove(); // Remove the marker from the map
+        } else {
+          console.warn(`Marker not found for ID: ${marker.id}`); // Debug log
+        }
+      });
+
+      // Clear all files and markers
+      setFiles([]); // Clear all files
+      setMarkers([]); // Clear markers state
+
+      // Reset the map view
+      const initialCoordinates = [0, 0]; // Set to your desired initial coordinates
+      const initialZoom = 2; // Set to your desired initial zoom level
+      initializeMap(initialCoordinates, initialZoom); // Reinitialize the map
+    }
+  };
+
+  // Use useEffect to log the updated state of files and markers
+  useEffect(() => {
+    console.log('Updated files state:', files);
+  }, [files]);
+
+  useEffect(() => {
+    console.log('Updated markers state:', markers);
+  }, [markers]);
+
+  const addMarker = (file) => {
+    const marker = new mapboxgl.Marker()
+      .setLngLat([file.location.longitude, file.location.latitude]) // Set the coordinates based on the file's location
+      .addTo(map);
+    
+    // Store the marker with its corresponding file ID
+    setMarkers(prevMarkers => [...prevMarkers, { id: file.id, marker }]);
+  };
+
   return (
     <div className="App">
-      <h1 className="title">PhotoMaps</h1>
+      <div id="top-nav">
+        <img className="nav-logo" src={logo} alt=""></img>
+        <h1 className="title">Mappi</h1>
+      </div>
       <div className="content-container">
         <div id="map" className="map-container"></div>
-        <div className="upload-section">
-          <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''}`}>
-            <input {...getInputProps()} />
-            <div className="dropzone-content">
-              <p>{isDragActive ? 'Drop files here!' : 'Drag & drop files here'}</p>
-              <button className="upload-button">upload files</button>
-            </div>
+      </div>
+      <div className="upload-section" {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''}`}>
+        <input {...getInputProps()} />
+        {files.length === 0 ? ( // Check if there are no uploaded files
+          <div className="dropzone-content">
+            <p>{isDragActive ? 'Drop files here!' : 'Drag & drop files here'}</p>
+            <button className="upload-button">upload files</button>
           </div>
-
-          {loading && <div className="loading">Loading images...</div>}
-
-          {files.length > 0 && (
-            <div className="thumbnails-container">
-              {files.map(file => (
-                <div key={file.id} className="thumbnail">
-                  <img
-                    src={file.preview}
-                    alt={file.name}
-                    onError={(e) => {
-                      console.error('Image load error:', file.name);
-                    }}
-                    onLoad={() => console.log('Image loaded successfully:', file.name)}
-                  />
-                  <button 
-                    className="delete-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(file.id);
-                    }}
-                    aria-label="Delete image"
+        ) : (
+          <div className="thumbnails-container">
+            {files.map(file => (
+              <div key={file.id} className="thumbnail">
+                <img
+                  src={file.preview}
+                  alt={file.name}
+                  onError={(e) => {
+                    console.error('Image load error:', file.name);
+                  }}
+                  onLoad={() => console.log('Image loaded successfully:', file.name)}
+                />
+                <button 
+                  className="delete-button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(file.id);
+                  }}
+                  aria-label="Delete image"
+                >
+                  <svg 
+                    width="14" 
+                    height="14" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2"
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
                   >
-                    <svg 
-                      width="14" 
-                      height="14" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2"
-                      strokeLinecap="round" 
-                      strokeLinejoin="round"
-                    >
-                      <path d="M3 6h18"></path>
-                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                    </svg>
-                  </button>
-                  <span className="filename">{file.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                  </svg>
+                </button>
+                <span className="filename">{file.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Action Bar */}
+      <div className="action-bar">
+        <button 
+          className="clear-all-button" 
+          onClick={handleClearAll} 
+          disabled={files.length === 0} // Disable if no files are uploaded
+        >
+          Clear All
+        </button>
+        <button 
+          className="create-journey-button" 
+          onClick={() => navigate('/new-journey')}
+          disabled={files.length === 0} // Disable if no files are uploaded
+        >
+          Create Journey
+        </button>
       </div>
     </div>
   );
+}
+
+function ImageTile({ date, time, fileName, fileFormat }) {
+    return (
+        <div className="image-tile">
+            <div className="date">{date}</div>
+            <div className="time">{time}</div>
+            <div className="file-name">{fileName.replace(/\.[^/.]+$/, "")}</div>
+            <div className="file-format-pill">{fileFormat}</div>
+        </div>
+    );
 }
 
 export default App;
